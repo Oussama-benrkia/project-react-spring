@@ -15,7 +15,12 @@ COPY src ./src
 RUN ./gradlew bootJar -x test --no-daemon
 
 FROM eclipse-temurin:21-jre AS runner
-LABEL authors="Oussama"
+LABEL authors="Oussama benrkia"
+LABEL maintainer="Oussama Ben <oussamabenrkia0@gmail.com>"
+LABEL version="1.0.0"
+LABEL description="Spring Boot app built with Gradle"
+LABEL vcs-url="https://github.com/Oussama-benrkia/project-react-spring/tree/main/Task"
+
 WORKDIR /app
 
 COPY --from=build /home/gradle/project/build/libs/*.jar app.jar

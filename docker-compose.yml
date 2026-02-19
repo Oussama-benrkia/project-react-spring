@@ -1,0 +1,74 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app-network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin
+    restart: always
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql  # Correct: matches service name above
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "8081:80"
+    networks:
+      - app-network
+
+  backend:
+    build: ./Task
+    container_name: spring_backend
+    depends_on:
+      mysql:
+        condition: service_healthy # This waits for the healthcheck above
+    environment:
+      # Use the service name 'mysql' as the host
+      MYSQL_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      MYSQL_DATASOURCE_USERNAME: ${MYSQL_USER} # Make sure this matches the DB user
+      MYSQL_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      FRONTEND_URL : http://localhost
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./task-ui
+      args:
+        - VITE_API_URL=http://localhost:8080/api/task
+    container_name: react_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    networks:
+      - app-network
+
+volumes:
+  mysql_data:
+
+networks:
+  app-network: 
+    driver: bridge
